@@ -49,7 +49,7 @@ public class JdbcCommentRepo implements CommentRepo {
 
     @Override
     public List<CommentResDto> findAllCommentsByPostId(Long id) {
-        return jdbcTemplate.query("SELECT * FROM comments WHERE post_id = ?", commentRowMapper(), id);
+        return jdbcTemplate.query("SELECT * FROM comments WHERE post_id = ? ORDER BY id DESC", commentRowMapper(), id);
     }
 
     @Override
