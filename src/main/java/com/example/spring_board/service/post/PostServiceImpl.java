@@ -47,7 +47,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public Page<PostResDto> findAllPosts(int page, int offset) {
-        Pageable pageable = PageRequest.of(page, offset, Sort.by("created_at").descending());
+        Pageable pageable = PageRequest.of(page, offset, Sort.by("id").descending());
 
         Page<Posts> posts = pagePostRepo.findAll(pageable);
 
@@ -116,7 +116,7 @@ public class PostServiceImpl implements PostService {
     @Override
     public List<CommentResDto> findAllCommentsByPostId(Long id) {
         postRepository.findPostByIdOrElseThrow(id);
-        
+
         return commentRepo.findAllCommentsByPostId(id);
     }
 }
