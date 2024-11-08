@@ -106,12 +106,16 @@ public class PostServiceImpl implements PostService {
         int updatedRow = postRepository.addPostLike(id, post.getLikes() + 1);
 
         if (updatedRow > 0) {
-//            post.setLikes(post.getLikes() + 1);
             return postRepository.findPostByIdOrElseThrow(id);
         } else {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "something went wrong");
         }
     }
+    //  0. static 변수로 반복문 사용
+    //  1. sync lock
+    //  2. queue 사용
+    //  3. redis
+    //  4. 카프카
 
     @Override
     public List<CommentResDto> findAllCommentsByPostId(Long id) {

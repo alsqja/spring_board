@@ -9,16 +9,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
-@Transactional
+//@Transactional
+//  동시성 테스트를 위해 transactional 비활성화
 public class PostServiceTest {
 
     @Autowired
@@ -98,16 +101,51 @@ public class PostServiceTest {
     }
 
     @Test
-    public void 게시글좋아요() {
+    public void 게시글좋아요_동시성테스트_Thread() throws InterruptedException {
         CreatePostReqDto newPost = new CreatePostReqDto("0000", "test", "testContents");
         PostResDto post = postService.createPost(newPost);
 
+        int threadCount = 100;
+        List<Thread> threads = new ArrayList<>();
+        CountDownLatch latch = new CountDownLatch(1);  // 모든 쓰레드를 대기시키는 락
 
-        for (int i = 0; i < 100; i++) {
-            post = postService.addPostLike(post.getId());
+        // 각 쓰레드가 addPostLike 메서드를 호출할 준비를 하고 대기 상태로 설정
+        for (int i = 0; i < threadCount; i++) {
+            Thread thread = new Thread(() -> {
+                try {
+                    latch.await();  // latch가 0이 될 때까지 대기
+                    postService.addPostLike(post.getId());  // addPostLike 호출
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+            threads.add(thread);
+            thread.start();
         }
 
-        assertThat(post.getLikes()).isEqualTo(100);
+        // 모든 쓰레드가 준비될 때까지 대기한 후, createPost가 완료된 시점에 latch 카운트를 0으로 설정
+        latch.countDown();
+
+        // 모든 쓰레드가 실행을 완료할 때까지 대기
+        for (Thread thread : threads) {
+            thread.join();
+        }
+
+        PostResDto updatedPost = postService.findPostById(post.getId());
+        assertThat(updatedPost.getLikes()).isEqualTo(100);
+    }
+
+    @Test
+    public void 게시글좋아요_동시성테스트_parallelStream() {
+        CreatePostReqDto newPost = new CreatePostReqDto("0000", "test", "testContents");
+        PostResDto post = postService.createPost(newPost);
+
+        // parallelStream을 사용해 addPostLike()를 병렬로 호출
+        IntStream.range(0, 100).parallel().forEach(i -> postService.addPostLike(post.getId()));
+
+        // 기대하는 값은 좋아요가 100 증가한 값
+        PostResDto updatedPost = postService.findPostById(post.getId());
+        assertThat(updatedPost.getLikes()).isEqualTo(100);
     }
 
     @Test
